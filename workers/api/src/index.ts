@@ -20,11 +20,10 @@ export default {
 
     // Auto-initialize D1 Database tables if they don't exist
     try {
-      await env.DB.prepare("SELECT 1 FROM config LIMIT 1").first();
+      await env.DB.prepare("SELECT 1 FROM accounts LIMIT 1").first();
     } catch (dbErr: any) {
-      if (dbErr.message && dbErr.message.includes("no such table")) {
-        try {
-          await env.DB.exec(`
+      try {
+        await env.DB.exec(`
             CREATE TABLE IF NOT EXISTS accounts (
               accountId TEXT PRIMARY KEY,
               brokerName TEXT NOT NULL,
@@ -121,7 +120,6 @@ export default {
           console.error("Auto-initialization failed:", initErr);
         }
       }
-    }
 
     // CORS Headers
     const corsHeaders = {
