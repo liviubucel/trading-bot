@@ -6,9 +6,9 @@ export { CTraderAccount } from "@zebrabyte/ctrader-account-do";
 export interface Env {
   DB: D1Database;
   CTRADER_ACCOUNT_DO: DurableObjectNamespace;
-  RISK_WORKER: { fetch: (req: Request) => Promise<Response> };
-  CTRADER_CLIENT_ID: string;
-  CTRADER_CLIENT_SECRET: string;
+  RISK_WORKER?: { fetch: (req: Request) => Promise<Response> };
+  CTRADER_CLIENT_ID?: string;
+  CTRADER_CLIENT_SECRET?: string;
   CTRADER_REDIRECT_URI: string;
 }
 
@@ -180,27 +180,7 @@ export default {
           return new Response(JSON.stringify({ error: "Missing required command fields" }), { status: 400, headers: corsHeaders });
         }
 
-        // 8a. Check with Risk Worker service binding
-        const riskResponse = await env.RISK_WORKER.fetch(
-          new Request("http://risk/evaluate", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(cmd),
-          })
-        );
-        const riskResult = await riskResponse.json() as { allowed: boolean; reason?: string; ruleEvaluated: string };
 
-        if (!riskResult.allowed) {
-          return new Response(
-            JSON.stringify({
-              success: false,
-              status: "BLOCKED",
-              reason: riskResult.reason,
-              rule: riskResult.ruleEvaluated,
-            }),
-            { status: 400, headers: corsHeaders }
-          );
-        }
 
         // 8b. Safety Check for Live Trading
         const safetyRecord = await env.DB.prepare(
