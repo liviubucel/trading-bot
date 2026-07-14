@@ -18,6 +18,111 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
+    // Auto-initialize D1 Database tables if they don't exist
+    try {
+      await env.DB.prepare("SELECT 1 FROM config LIMIT 1").first();
+    } catch (dbErr: any) {
+      if (dbErr.message && dbErr.message.includes("no such table")) {
+        try {
+          await env.DB.exec(`
+            CREATE TABLE IF NOT EXISTS accounts (
+              accountId TEXT PRIMARY KEY,
+              brokerName TEXT NOT NULL,
+              depositAsset TEXT NOT NULL DEFAULT 'USD',
+              balance REAL NOT NULL DEFAULT 0.0,
+              equity REAL NOT NULL DEFAULT 0.0,
+              isConnected INTEGER NOT NULL DEFAULT 0,
+              tokenData TEXT,
+              updatedAt INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS positions (
+              positionId TEXT PRIMARY KEY,
+              accountId TEXT NOT NULL,
+              symbol TEXT NOT NULL,
+              volume REAL NOT NULL,
+              entryPrice REAL NOT NULL,
+              tradeSide TEXT NOT NULL CHECK (tradeSide IN ('BUY', 'SELL')),
+              stopLoss REAL,
+              takeProfit REAL,
+              unrealizedPl REAL NOT NULL DEFAULT 0.0,
+              openedAt INTEGER NOT NULL,
+              FOREIGN KEY (accountId) REFERENCES accounts(accountId) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS orders (
+              orderId TEXT PRIMARY KEY,
+              accountId TEXT NOT NULL,
+              symbol TEXT NOT NULL,
+              volume REAL NOT NULL,
+              limitPrice REAL,
+              stopPrice REAL,
+              tradeSide TEXT NOT NULL CHECK (tradeSide IN ('BUY', 'SELL')),
+              orderType TEXT NOT NULL CHECK (orderType IN ('MARKET', 'LIMIT', 'STOP')),
+              status TEXT NOT NULL CHECK (status IN ('PENDING', 'FILLED', 'CANCELLED')),
+              createdAt INTEGER NOT NULL,
+              FOREIGN KEY (accountId) REFERENCES accounts(accountId) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS historical_trades (
+              tradeId TEXT PRIMARY KEY,
+              accountId TEXT NOT NULL,
+              symbol TEXT NOT NULL,
+              volume REAL NOT NULL,
+              entryPrice REAL NOT NULL,
+              closePrice REAL NOT NULL,
+              tradeSide TEXT NOT NULL CHECK (tradeSide IN ('BUY', 'SELL')),
+              realizedPl REAL NOT NULL,
+              closedAt INTEGER NOT NULL,
+              FOREIGN KEY (accountId) REFERENCES accounts(accountId) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS audit_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              timestamp INTEGER NOT NULL,
+              level TEXT NOT NULL CHECK (level IN ('INFO', 'WARN', 'ERROR', 'CRITICAL')),
+              accountId TEXT NOT NULL,
+              component TEXT NOT NULL,
+              action TEXT NOT NULL,
+              message TEXT NOT NULL,
+              contextJson TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS config (
+              key TEXT PRIMARY KEY,
+              valueJson TEXT NOT NULL,
+              updatedAt INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS news_calendar (
+              id TEXT PRIMARY KEY,
+              time INTEGER NOT NULL,
+              currency TEXT NOT NULL,
+              eventName TEXT NOT NULL,
+              impactLevel TEXT NOT NULL CHECK (impactLevel IN ('LOW', 'MEDIUM', 'HIGH')),
+              actual REAL,
+              forecast REAL,
+              previous REAL
+            );
+
+            INSERT OR REPLACE INTO config (key, valueJson, updatedAt) VALUES (
+              'risk_config',
+              '{"maxRiskPerTradePercent":1.0,"maxDailyLossPercent":5.0,"maxOpenExposureUnits":{"US30":100,"XAUUSD":500},"spreadProtectionPips":{"US30":15.0,"XAUUSD":3.5},"slippageProtectionPips":2.0,"newsLockMinutesBefore":15,"newsLockMinutesAfter":15,"globalKillSwitch":false}',
+              1783984800000
+            );
+
+            INSERT OR REPLACE INTO config (key, valueJson, updatedAt) VALUES (
+              'safety_config',
+              '{"enableLiveTrading":false}',
+              1783984800000
+            );
+          `);
+        } catch (initErr) {
+          console.error("Auto-initialization failed:", initErr);
+        }
+      }
+    }
+
     // CORS Headers
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
