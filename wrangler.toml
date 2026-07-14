@@ -9,7 +9,7 @@ CTRADER_REDIRECT_URI = "http://localhost:8787/oauth/callback"
 [[d1_databases]]
 binding = "DB"
 database_name = "zebrabyte_db"
-database_id = "local_db_id"
+database_id = "5e0c9977-e7b9-40a0-b6db-5032c2f863bf"
 
 [[durable_objects.bindings]]
 name = "CTRADER_ACCOUNT_DO"
