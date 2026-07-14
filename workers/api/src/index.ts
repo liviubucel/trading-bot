@@ -10,6 +10,7 @@ export interface Env {
   CTRADER_CLIENT_ID?: string;
   CTRADER_CLIENT_SECRET?: string;
   CTRADER_REDIRECT_URI: string;
+  AI: any;
 }
 
 export default {
@@ -170,6 +171,116 @@ export default {
           "SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100"
         ).all();
         return new Response(JSON.stringify(results), { headers: corsHeaders });
+      }
+
+      // 7b. AI News & Signal Analysis
+      if ((path === "/ai/analyze" || path === "/api/ai/analyze") && request.method === "POST") {
+        const body: any = await request.json();
+        const text = body.text;
+        const symbol = body.symbol || "XAUUSD";
+        const accountId = body.accountId;
+
+        if (!text) {
+          return new Response(JSON.stringify({ error: "Missing text input to analyze" }), { status: 400, headers: corsHeaders });
+        }
+
+        const prompt = `You are a professional financial analyst. Analyze the following news/event and output a valid JSON object ONLY.
+News/Signal content: "${text}"
+Target trading asset: "${symbol}"
+
+The output JSON must contain exactly these keys:
+{
+  "sentiment": "BULLISH" | "BEARISH" | "NEUTRAL",
+  "score": number (between -1.0 and 1.0, where -1 is bearish, 1 is bullish),
+  "confidence": number (between 0.0 and 1.0),
+  "action": "BUY" | "SELL" | "HOLD",
+  "reasoning": "string (brief explanation)"
+}
+Do NOT include any markdown block, backticks, code blocks or extra text. Output only raw JSON.`;
+
+        let aiResult: any;
+        try {
+          const aiResponse = await env.AI.run("@cf/meta/llama-3-8b-instruct", {
+            prompt: prompt,
+            max_tokens: 200,
+            temperature: 0.1
+          });
+
+          const rawText = aiResponse.response || aiResponse.text || "";
+          const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+          aiResult = JSON.parse(cleanJson);
+        } catch (e: any) {
+          return new Response(JSON.stringify({ error: `AI Analysis failed: ${e.message}` }), { status: 500, headers: corsHeaders });
+        }
+
+        // Write Audit Log of AI evaluation
+        await env.DB.prepare(
+          "INSERT INTO audit_logs (timestamp, level, accountId, component, action, message, contextJson) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(
+          Date.now(),
+          "INFO",
+          accountId || "SYSTEM",
+          "ai-engine",
+          "AI_SENTIMENT_EVALUATION",
+          `AI evaluated text sentiment as ${aiResult.sentiment} (confidence: ${(aiResult.confidence * 100).toFixed(0)}%) for asset ${symbol}`,
+          JSON.stringify({ input: text, output: aiResult })
+        ).run();
+
+        let executionResult: any = null;
+        if (accountId && aiResult.confidence >= 0.75 && (aiResult.action === "BUY" || aiResult.action === "SELL")) {
+          const autoCmd: TradingCommand = {
+            commandId: `cmd_ai_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            accountId,
+            action: aiResult.action,
+            symbol,
+            volume: symbol === "XAUUSD" ? 1000 : 10,
+            orderType: "MARKET",
+            timestamp: Date.now()
+          };
+
+          const safetyRecord = await env.DB.prepare(
+            "SELECT valueJson FROM config WHERE key = 'safety_config'"
+          ).first<{ valueJson: string }>();
+          const safety = safetyRecord ? JSON.parse(safetyRecord.valueJson) : { enableLiveTrading: false };
+
+          if (!safety.enableLiveTrading) {
+            await env.DB.prepare(
+              "INSERT INTO audit_logs (timestamp, level, accountId, component, action, message, contextJson) VALUES (?, ?, ?, ?, ?, ?, ?)"
+            ).bind(
+              Date.now(),
+              "INFO",
+              accountId,
+              "api-worker",
+              "SIMULATED_EXECUTION",
+              `[Auto-AI] Simulated execution of ${autoCmd.action} for ${autoCmd.volume} units of ${autoCmd.symbol} (Live Trading Disabled)`,
+              JSON.stringify(autoCmd)
+            ).run();
+
+            executionResult = {
+              success: true,
+              status: "SIMULATED",
+              message: "Auto-AI command executed in read-only simulation mode.",
+              command: autoCmd
+            };
+          } else {
+            const doId = env.CTRADER_ACCOUNT_DO.idFromName(accountId);
+            const doStub = env.CTRADER_ACCOUNT_DO.get(doId);
+            const executeResponse = await doStub.fetch(
+              new Request(`http://do/command`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(autoCmd),
+              })
+            );
+            executionResult = await executeResponse.json();
+          }
+        }
+
+        return new Response(JSON.stringify({
+          analysis: aiResult,
+          autoExecution: executionResult,
+          triggered: executionResult ? true : false
+        }), { headers: corsHeaders });
       }
 
       // 8. Place Command / Execute
