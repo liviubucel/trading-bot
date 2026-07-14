@@ -1,0 +1,50 @@
+name = "zebrabyte-ctrader-account"
+main = "src/index.ts"
+compatibility_date = "2024-04-03"
+
+[vars]
+CTRADER_API_HOST = "demo.ctraderapi.com"
+CTRADER_API_PORT = "5035"
+CTRADER_USE_SSL = "true"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zebrabyte_db"
+database_id = "local_db_id"
+
+[[r2_buckets]]
+binding = "HISTORICAL_DATA"
+bucket_name = "zebrabyte_r2"
+
+[[durable_objects.bindings]]
+name = "CTRADER_ACCOUNT_DO"
+class_name = "CTraderAccount"
+
+# We must export the class for the migration
+[[migrations]]
+tag = "v1"
+new_classes = ["CTraderAccount"]
+
+[env.staging]
+vars = { CTRADER_API_HOST = "demo.ctraderapi.com", CTRADER_API_PORT = "5035", CTRADER_USE_SSL = "true" }
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_staging", database_id = "staging_db_uuid" }
+]
+r2_buckets = [
+  { binding = "HISTORICAL_DATA", bucket_name = "zebrabyte_r2_staging" }
+]
+durable_objects = { bindings = [
+  { name = "CTRADER_ACCOUNT_DO", class_name = "CTraderAccount" }
+] }
+
+[env.production]
+vars = { CTRADER_API_HOST = "live.ctraderapi.com", CTRADER_API_PORT = "5035", CTRADER_USE_SSL = "true" }
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_prod", database_id = "prod_db_uuid" }
+]
+r2_buckets = [
+  { binding = "HISTORICAL_DATA", bucket_name = "zebrabyte_r2_prod" }
+]
+durable_objects = { bindings = [
+  { name = "CTRADER_ACCOUNT_DO", class_name = "CTraderAccount" }
+] }

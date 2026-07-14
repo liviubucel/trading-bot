@@ -1,0 +1,29 @@
+name = "zebrabyte-risk"
+main = "src/index.ts"
+compatibility_date = "2024-04-03"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zebrabyte_db"
+database_id = "local_db_id"
+
+[[durable_objects.bindings]]
+name = "CTRADER_ACCOUNT_DO"
+class_name = "CTraderAccount"
+script_name = "zebrabyte-ctrader-account"
+
+[env.staging]
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_staging", database_id = "staging_db_uuid" }
+]
+durable_objects = { bindings = [
+  { name = "CTRADER_ACCOUNT_DO", class_name = "CTraderAccount", script_name = "zebrabyte-ctrader-account-staging" }
+] }
+
+[env.production]
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_prod", database_id = "prod_db_uuid" }
+]
+durable_objects = { bindings = [
+  { name = "CTRADER_ACCOUNT_DO", class_name = "CTraderAccount", script_name = "zebrabyte-ctrader-account-prod" }
+] }

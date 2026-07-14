@@ -1,0 +1,45 @@
+name = "zebrabyte-api"
+main = "src/index.ts"
+compatibility_date = "2024-04-03"
+
+[vars]
+ENVIRONMENT = "development"
+CTRADER_REDIRECT_URI = "http://localhost:8787/oauth/callback"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zebrabyte_db"
+database_id = "local_db_id"
+
+[[durable_objects.bindings]]
+name = "CTRADER_ACCOUNT_DO"
+class_name = "CTraderAccount"
+script_name = "zebrabyte-ctrader-account"
+
+[[services]]
+binding = "RISK_WORKER"
+service = "zebrabyte-risk"
+
+[env.staging]
+vars = { ENVIRONMENT = "staging", CTRADER_REDIRECT_URI = "https://staging-api.zebrabyte.dev/oauth/callback" }
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_staging", database_id = "staging_db_uuid" }
+]
+durable_objects = { bindings = [
+  { name = "CTRADER_ACCOUNT_DO", class_name = "CTraderAccount", script_name = "zebrabyte-ctrader-account-staging" }
+] }
+services = [
+  { binding = "RISK_WORKER", service = "zebrabyte-risk-staging" }
+]
+
+[env.production]
+vars = { ENVIRONMENT = "production", CTRADER_REDIRECT_URI = "https://api.zebrabyte.com/oauth/callback" }
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_prod", database_id = "prod_db_uuid" }
+]
+durable_objects = { bindings = [
+  { name = "CTRADER_ACCOUNT_DO", class_name = "CTraderAccount", script_name = "zebrabyte-ctrader-account-prod" }
+] }
+services = [
+  { binding = "RISK_WORKER", service = "zebrabyte-risk-prod" }
+]

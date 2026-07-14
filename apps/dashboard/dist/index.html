@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zebrabyte Administrative Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --card-bg: #151d30;
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.15);
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 1rem;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .kill-switch-btn {
+            background-color: var(--danger);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+        }
+
+        .kill-switch-btn.active {
+            background-color: var(--success);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.03);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: var(--primary);
+        }
+
+        .card.danger::before { background: var(--danger); }
+        .card.success::before { background: var(--success); }
+
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge.success { background-color: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .badge.danger { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+        .log-list {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.85rem;
+            background: #080c14;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .log-item {
+            margin-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            padding-bottom: 0.25rem;
+        }
+
+        .log-time { color: var(--text-muted); margin-right: 0.5rem; }
+        .log-warn { color: var(--warning); }
+        .log-error { color: var(--danger); }
+        .log-info { color: #60a5fa; }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>ZEBRABYTE TRADING</h1>
+            <p style="font-size: 0.9rem; color: var(--text-muted);">Cloudflare-Native Algorithmic Trading Platform</p>
+        </div>
+        <button id="killSwitchBtn" class="kill-switch-btn" onclick="toggleKillSwitch()">ARM GLOBAL KILL SWITCH</button>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Connected Accounts</h2>
+            <div id="accountsCount" class="stat-value">0</div>
+            <div id="accountsList">Loading...</div>
+        </div>
+        <div class="card">
+            <h2>Overall Balance & Equity</h2>
+            <div id="totalBalance" class="stat-value">$0.00</div>
+            <div id="totalEquity" class="stat-value" style="color: var(--success);">$0.00</div>
+        </div>
+        <div class="card">
+            <h2>Market Prices</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Bid</th>
+                        <th>Ask</th>
+                    </tr>
+                </thead>
+                <tbody id="pricesBody">
+                    <tr><td colspan="3">Waiting for tick updates...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 2rem;">
+        <h2>Active Open Positions</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Position ID</th>
+                    <th>Account</th>
+                    <th>Symbol</th>
+                    <th>Side</th>
+                    <th>Volume</th>
+                    <th>Entry Price</th>
+                    <th>Unrealized PnL</th>
+                </tr>
+            </thead>
+            <tbody id="positionsBody">
+                <tr><td colspan="7">No open positions.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>System Audit Log</h2>
+        <div id="auditLogs" class="log-list">
+            Loading system logs...
+        </div>
+    </div>
+
+    <script>
+        const API_URL = import.meta.env?.VITE_API_URL || '';
+        let globalKillSwitchActive = false;
+
+        async function refreshDashboard() {
+            try {
+                const configRes = await fetch(\`\${API_URL}/api/config\`);
+                if (configRes.ok) {
+                    const config = await configRes.json();
+                    if (config.risk_config) {
+                        globalKillSwitchActive = config.risk_config.globalKillSwitch;
+                        const btn = document.getElementById('killSwitchBtn');
+                        if (globalKillSwitchActive) {
+                            btn.innerText = 'DISARM GLOBAL KILL SWITCH';
+                            btn.classList.add('active');
+                        } else {
+                            btn.innerText = 'ARM GLOBAL KILL SWITCH';
+                            btn.classList.remove('active');
+                        }
+                    }
+                }
+
+                const accountsRes = await fetch(\`\${API_URL}/api/accounts\`);
+                if (accountsRes.ok) {
+                    const accounts = await accountsRes.json();
+                    document.getElementById('accountsCount').innerText = accounts.length;
+
+                    let totalBal = 0;
+                    let totalEq = 0;
+                    let listHtml = '';
+                    let pricesHtml = '';
+                    let positionsHtml = '';
+
+                    for (const acct of accounts) {
+                        totalBal += acct.balance;
+                        totalEq += acct.equity;
+                        listHtml += \`<div>Account ID: <strong>\${acct.accountId}</strong> (\${acct.brokerName}) - \${acct.isConnected ? '<span class="badge success">ONLINE</span>' : '<span class="badge danger">OFFLINE</span>'}</div>\`;
+
+                        const acctStatusRes = await fetch(\`\${API_URL}/api/accounts/\${acct.accountId}/status\`);
+                        if (acctStatusRes.ok) {
+                            const status = await acctStatusRes.json();
+                            if (status.prices) {
+                                for (const [sym, price] of Object.entries(status.prices)) {
+                                    pricesHtml += \`<tr>
+                                        <td><strong>\${sym}</strong></td>
+                                        <td>\${price.bid.toFixed(2)}</td>
+                                        <td>\${price.ask.toFixed(2)}</td>
+                                    </tr>\`;
+                                }
+                            }
+                        }
+
+                        const acctPositionsRes = await fetch(\`\${API_URL}/api/accounts/\${acct.accountId}/positions\`);
+                        if (acctPositionsRes.ok) {
+                            const positions = await acctPositionsRes.json();
+                            for (const pos of positions) {
+                                positionsHtml += \`<tr>
+                                    <td>\${pos.positionId}</td>
+                                    <td>\${pos.accountId}</td>
+                                    <td><strong>\${pos.symbol}</strong></td>
+                                    <td><span class="badge \${pos.tradeSide === 'BUY' ? 'success' : 'danger'}">\text{\${pos.tradeSide}}</span></td>
+                                    <td>\text{\${pos.volume}}</td>
+                                    <td>\${pos.entryPrice.toFixed(2)}</td>
+                                    <td style="color: \${pos.unrealizedPl >= 0 ? 'var(--success)' : 'var(--danger)'}">$\${pos.unrealizedPl.toFixed(2)}</td>
+                                </tr>\`;
+                            }
+                        }
+                    }
+
+                    document.getElementById('totalBalance').innerText = '$' + totalBal.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    document.getElementById('totalEquity').innerText = '$' + totalEq.toLocaleString(undefined, {minimumFractionDigits: 2});
+                    document.getElementById('accountsList').innerHTML = listHtml || 'No accounts connected.';
+                    if (pricesHtml) document.getElementById('pricesBody').innerHTML = pricesHtml;
+                    if (positionsHtml) document.getElementById('positionsBody').innerHTML = positionsHtml;
+                }
+
+                const logsRes = await fetch(\`\${API_URL}/api/audit-logs\`);
+                if (logsRes.ok) {
+                    const logs = await logsRes.json();
+                    let logsHtml = '';
+                    for (const log of logs) {
+                        const dateStr = new Date(log.timestamp).toLocaleTimeString();
+                        let classType = 'log-info';
+                        if (log.level === 'WARN') classType = 'log-warn';
+                        if (log.level === 'ERROR' || log.level === 'CRITICAL') classType = 'log-error';
+
+                        logsHtml += \`<div class="log-item">
+                            <span class="log-time">\${dateStr}</span>
+                            <span class="badge \${log.level === 'INFO' ? 'success' : 'danger'}">\${log.level}</span>
+                            [\${log.component}] \text{\${log.action}} - <span class="\${classType}">\${log.message}</span>
+                        </div>\`;
+                    }
+                    document.getElementById('auditLogs').innerHTML = logsHtml || 'No logs generated.';
+                }
+            } catch (e) {
+                console.error("Dashboard refresh error:", e);
+            }
+        }
+
+        async function toggleKillSwitch() {
+            const nextState = !globalKillSwitchActive;
+            const confirmMsg = nextState 
+                ? "Are you sure you want to ARM the Global Kill Switch? All execution will be blocked."
+                : "Are you sure you want to DISARM the Global Kill Switch?";
+            
+            if (confirm(confirmMsg)) {
+                try {
+                    const configRes = await fetch(\`\${API_URL}/api/config\`);
+                    if (configRes.ok) {
+                        const config = await configRes.json();
+                        const riskConfig = config.risk_config || {};
+                        riskConfig.globalKillSwitch = nextState;
+
+                        const updateRes = await fetch(\`\${API_URL}/api/config\`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ risk_config: riskConfig })
+                        });
+
+                        if (updateRes.ok) {
+                            alert(nextState ? "GLOBAL KILL SWITCH ACTIVATED!" : "GLOBAL KILL SWITCH DEACTIVATED!");
+                            refreshDashboard();
+                        }
+                    }
+                } catch (e) {
+                    alert("Failed to toggle kill switch: " + e.message);
+                }
+            }
+        }
+
+        refreshDashboard();
+        setInterval(refreshDashboard, 5000);
+    </script>
+</body>
+</html>

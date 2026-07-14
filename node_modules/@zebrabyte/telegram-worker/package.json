@@ -1,0 +1,16 @@
+{
+  "name": "@zebrabyte/telegram-worker",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@zebrabyte/contracts": "file:../../packages/contracts"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

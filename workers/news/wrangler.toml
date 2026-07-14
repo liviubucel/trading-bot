@@ -1,0 +1,22 @@
+name = "zebrabyte-news"
+main = "src/index.ts"
+compatibility_date = "2024-04-03"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zebrabyte_db"
+database_id = "local_db_id"
+
+# Trigger every 30 minutes
+[triggers]
+crons = ["*/30 * * * *"]
+
+[env.staging]
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_staging", database_id = "staging_db_uuid" }
+]
+
+[env.production]
+d1_databases = [
+  { binding = "DB", database_name = "zebrabyte_db_prod", database_id = "prod_db_uuid" }
+]

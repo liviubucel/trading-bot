@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "types": ["@cloudflare/workers-types"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@zebrabyte/contracts": ["./packages/contracts/src/index.ts"],
+      "@zebrabyte/ctrader-protocol": ["./packages/ctrader-protocol/src/index.ts"],
+      "@zebrabyte/risk-engine": ["./packages/risk-engine/src/index.ts"],
+      "@zebrabyte/market-models": ["./packages/market-models/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
+}
