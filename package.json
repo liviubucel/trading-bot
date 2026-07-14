@@ -1,21 +1,17 @@
 {
-  "name": "zebrabyte-trading",
+  "name": "valetax-mt5-ai-bot",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "workers/*",
-    "durable-objects/*",
-    "packages/*"
-  ],
+  "description": "Mobile UI + Cloudflare Worker AI signal API + MT5 EA scaffold for Valetax MT5.",
+  "type": "module",
   "scripts": {
-    "build": "npm run build -w packages/contracts -w packages/ctrader-protocol -w packages/market-models -w packages/risk-engine && npm run build -w durable-objects/ctrader-account && npm run build -w workers/api -w workers/risk -w workers/telegram -w workers/news && npm run build -w apps/dashboard",
-    "test": "vitest run"
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "cf:secret": "wrangler secret put APP_TOKEN",
+    "devvars": "node scripts/create-dev-vars.mjs",
+    "tail": "wrangler tail"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260702.1",
-    "typescript": "^5.4.5",
-    "vitest": "^1.6.0",
-    "wrangler": "^3.60.0"
+    "wrangler": "^4.20.0"
   }
 }

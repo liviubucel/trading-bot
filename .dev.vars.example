@@ -1,0 +1,5 @@
+# Copy to .dev.vars for local wrangler dev only. Do not commit real secrets.
+APP_TOKEN=change-this-token
+AI_MODEL=@cf/meta/llama-3.1-8b-instruct
+DEFAULT_MAX_RISK_PERCENT=1
+DEFAULT_MIN_CONFIDENCE=65

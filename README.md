@@ -1,76 +1,188 @@
-# Zebrabyte Trading Platform
+# Valetax MT5 AI Bot + Cloudflare Workers AI
 
-Zebrabyte is a Cloudflare-native algorithmic trading platform. It connects directly to the cTrader Open API using outbound TCP sockets and Protobuf, removing the need for an always-on VPS, Wine, or MetaTrader terminal.
+Project ini berisi scaffold aplikasi trading teknis:
 
-## Repository Structure
+- **Mobile UI HTML**: `public/index.html`
+- **Cloudflare Worker API + Workers AI binding**: `src/worker.js`
+- **MT5 Expert Advisor (EA)**: `mql5/ValetaxCloudflareAIBot.mq5`
+- **MT5 Account Guard / Login metadata** di UI: nomor login + server, tanpa password
+- **Deploy config**: `wrangler.toml`
 
-- `apps/dashboard`: Admin panel SPA for monitoring status, prices, positions, and logs.
-- `workers/api`: Core HTTP endpoint router, OAuth handler, and asset server.
-- `workers/risk`: Check engine enforcing exposure limits, news locks, daily loss, and idempotency.
-- `workers/telegram`: Webhook processor routing user queries to status panels.
-- `workers/news`: Scheduler fetching upcoming economic calendars to arm news locks.
-- `durable-objects/ctrader-account`: DO maintaining persistent TCP socket streams and heartbeats.
-- `packages/contracts`: Shared TypeScript data structures and parameter schemas.
-- `packages/ctrader-protocol`: Custom Protobuf serialization and socket framing parser.
-- `packages/risk-engine`: Core business logic evaluating deterministic trading locks.
-- `packages/market-models`: Pip dimensions, broker symbols translation, and metadata.
-- `database/migrations`: Database schema definitions and baseline insertions.
-- `tests/unit`: Tests validating protocol serialization and risk validations.
-- `tests/integration`: Tests checking socket connections, mock server streaming, and command idempotency.
-- `docs/architecture`: C4 system layout and component interactions.
-- `infrastructure/cloudflare`: Guides to initialize D1 database, R2 storage, and wrangler secrets.
+> Penting: ini bukan nasihat finansial dan tidak menjamin profit. Selalu uji di akun demo terlebih dahulu, gunakan risk management, dan pahami bahwa auto trading berisiko kehilangan dana.
 
----
+## Arsitektur
 
-## Local Development & Setup
+Browser HTML tidak bisa mengeksekusi order langsung ke MT5/Valetax. Alur yang benar:
 
-### 1. Prerequisites
-- Node.js (v20+ recommended)
-- Cloudflare Wrangler CLI (`npm install -g wrangler` or run via `npx wrangler`)
+1. UI mobile menyimpan pengaturan dan dapat mengirim data indikator ke Worker.
+2. UI juga menyimpan metadata login MT5 Valetax secara lokal: nomor login, server, tipe akun. Password broker tidak pernah disimpan.
+3. Cloudflare Worker menjalankan 5 agent scoring:
+   - Trend Agent
+   - Momentum Agent
+   - Volatility Agent
+   - Price Action Agent
+   - Risk Guard Agent
+3. Jika Workers AI binding aktif, Worker meminta AI melakukan consensus konservatif.
+4. EA MT5 membaca indikator dari chart Valetax MT5, memanggil endpoint `/api/signal`, lalu mengeksekusi order jika `InpAllowAutoTrade=true`.
 
-### 2. Install Workspace Dependencies
-Execute the command below at the root to map internal workspaces:
+## Deploy ke Cloudflare
+
+### 1. Install dependency
+
 ```bash
 npm install
 ```
 
-### 3. Initialize D1 Local Database
-Set up D1 schema locally:
+### 2. Login Cloudflare
+
 ```bash
-npx wrangler d1 migrations apply zebrabyte_db --local
+npx wrangler login
 ```
 
-### 4. Run Tests
-Validate the monorepo using Vitest (which runs all unit and integration tests):
+### 3. Set token rahasia
+
 ```bash
-npm run test
+npm run cf:secret
+# isi APP_TOKEN, contoh: token panjang acak
 ```
 
-### 5. Running Workers Locally
-Run wrangler dev servers concurrently:
+`APP_TOKEN` harus sama dengan input di UI dan EA.
+
+### 4. Deploy
+
 ```bash
-# Start API Worker (listening on port 8787)
-npx wrangler dev --cwd workers/api
-
-# Start Risk Worker (listening on port 8788)
-npx wrangler dev --cwd workers/risk --port 8788
-
-# Start Telegram Bot Worker (listening on port 8789)
-npx wrangler dev --cwd workers/telegram --port 8789
+npm run deploy
 ```
 
----
+Setelah deploy, buka URL Worker yang diberikan Wrangler.
 
-## Testing Webhooks & Sockets Locally
+## Development lokal
 
-### Test Telegram Webhook Locally
-You can test the Telegram webhook locally using a standard `curl` POST command without connecting to real Telegram servers:
 ```bash
-curl -X POST http://localhost:8789 \
-     -H "Content-Type: application/json" \
-     -d '{"message": {"text": "/status", "chat": {"id": 12345}}}'
+npm run dev
 ```
-The response will return the platform status markdown.
 
-### Test cTrader Socket Reconnections
-The integration test suite (`tests/integration/ctrader.test.ts`) verifies socket reconnections by starting a mock TCP server, connecting the Durable Object, and manually calling `simulateDisconnection()`. The Durable Object automatically establishes a fresh connection after 1 second.
+Buka URL lokal Wrangler. Jika belum ada Workers AI binding lokal, API tetap memakai fallback weighted-vote.
+
+## Endpoint penting
+
+### Health
+
+```http
+GET /api/health
+```
+
+### Analyze dari UI
+
+```http
+POST /api/analyze
+x-app-token: APP_TOKEN
+content-type: application/json
+
+{
+  "symbol": "XAUUSD",
+  "price": 4448.98,
+  "emaFast": 4455,
+  "emaSlow": 4448,
+  "rsi": 62,
+  "atrPoints": 250,
+  "spreadPoints": 20,
+  "candleDir": "bullish",
+  "riskPercent": 1,
+  "minConfidence": 65
+}
+```
+
+### Quote harga referensi untuk UI
+
+```http
+GET /api/quote?symbol=XAUUSD&token=APP_TOKEN
+```
+
+Endpoint ini mengambil harga referensi dari Stooq CSV untuk mengisi kolom Price di UI. Harga broker Valetax/MT5 bisa berbeda karena spread dan likuiditas. EA tetap memakai bid/ask langsung dari terminal MT5.
+
+### Signal untuk EA
+
+```http
+GET /api/signal?symbol=XAUUSD&price=4448.98&emaFast=4455&emaSlow=4448&rsi=62&atrPoints=250&spreadPoints=20&candleDir=bullish&token=APP_TOKEN
+```
+
+Response ringkas untuk EA:
+
+```json
+{
+  "ok": true,
+  "symbol": "XAUUSD",
+  "action": "buy",
+  "direction": "bullish",
+  "confidence": 72,
+  "slPoints": 375,
+  "tpPoints": 563,
+  "maxSpreadPoints": 35,
+  "reason": "Weighted 5-agent vote..."
+}
+```
+
+## Login Akun MT5 Valetax
+
+Aplikasi web tidak melakukan login broker secara langsung. Login trading harus dilakukan di terminal MT5 Valetax:
+
+1. Buka MT5 Valetax.
+2. Pilih `File -> Login to Trade Account`.
+3. Masukkan nomor login, password, dan server dari Valetax langsung di MT5.
+4. Di UI aplikasi, buka menu **Login Akun MT5** lalu isi:
+   - Nomor Login MT5
+   - Server MT5 Valetax
+   - Tipe akun demo/live
+5. Copy konfigurasi input EA dari UI.
+
+EA memiliki guard berikut:
+
+```text
+InpExpectedAccountLogin=nomor_login_anda
+InpExpectedAccountServer=server_valetax_anda
+InpRequireAccountMatch=true
+```
+
+Jika akun MT5 yang sedang aktif tidak cocok, EA akan berhenti / tidak trading. Ini mencegah bot berjalan di akun yang salah.
+
+> Jangan simpan password broker di HTML, Worker, GitHub, atau file project. Password hanya dimasukkan di terminal MT5 resmi.
+
+## Instal EA di MT5 Valetax
+
+1. Buka MT5 yang sudah login ke akun Valetax.
+2. `File -> Open Data Folder`.
+3. Copy `mql5/ValetaxCloudflareAIBot.mq5` ke `MQL5/Experts/`.
+4. Buka MetaEditor, compile file tersebut.
+5. Di MT5: `Tools -> Options -> Expert Advisors`:
+   - centang `Allow algorithmic trading`
+   - centang `Allow WebRequest for listed URL`
+   - tambahkan URL Worker Cloudflare, contoh `https://valetax-mt5-ai-bot.username.workers.dev`
+6. Attach EA ke chart symbol yang akan diperdagangkan.
+7. Input:
+   - `InpWorkerUrl`: URL Worker
+   - `InpAppToken`: token yang sama dengan `APP_TOKEN`
+   - `InpExpectedAccountLogin`: nomor login MT5 Valetax Anda
+   - `InpExpectedAccountServer`: server MT5 Valetax Anda
+   - `InpRequireAccountMatch`: `true` agar EA hanya jalan di akun yang benar
+   - `InpAllowAutoTrade`: mulai dari `false`; ubah `true` hanya setelah demo test
+   - risk, max spread, min confidence, dll.
+
+## Bagian yang masih perlu Anda lengkapi sebelum live
+
+- Forward test demo dan backtest terpisah.
+- Daily loss limit dan max open trades per akun (bisa ditambah ke EA).
+- VPS untuk MT5 agar EA berjalan stabil 24/5.
+- Monitoring log Cloudflare dan MT5.
+- Domain custom + TLS default Cloudflare.
+- Alert Telegram/Discord untuk sinyal dan order.
+- Proteksi token lebih kuat jika banyak user: JWT, Cloudflare Access, D1/KV untuk user settings.
+- Kalender news/high-impact filter agar EA tidak trade saat volatilitas ekstrem.
+
+## Catatan keamanan
+
+- Jangan simpan password broker atau investor password di HTML/Worker/localStorage/GitHub.
+- Menu Login Akun MT5 hanya menyimpan nomor login dan server untuk validasi EA, bukan password.
+- EA berjalan di terminal MT5 yang sudah login; Worker hanya memberi sinyal.
+- Jangan expose `APP_TOKEN` ke publik.
+- Gunakan akun demo sampai statistik stabil.

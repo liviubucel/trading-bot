@@ -1,23 +1,5 @@
-# Dependencies
 node_modules/
-
-# Build outputs
-dist/
-*.js.map
-
-# Wrangler local state
-.wrangler/
 .dev.vars
-
-# OS files
+.wrangler/
 .DS_Store
-Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-
-# Environment files
-.env
-.env.local
-.env.*.local
+*.log

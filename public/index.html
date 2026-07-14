@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Valetax MT5 AI Bot - Cloudflare</title>
+  <style>
+    :root{
+      --bg:#070a12;--panel:#0e1424;--panel2:#111a2e;--muted:#7f8da8;--text:#edf3ff;
+      --brand:#f48120;--brand2:#ffd39a;--green:#2ee59d;--red:#ff5b7c;--blue:#6ea8fe;
+      --line:rgba(255,255,255,.09);--shadow:0 16px 40px rgba(0,0,0,.35);--radius:22px;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;background:radial-gradient(circle at 80% -10%,rgba(244,129,32,.25),transparent 30%),linear-gradient(135deg,#070a12,#0b1020 48%,#080b14);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}
+    button,input,select,textarea{font:inherit;color:inherit} button{cursor:pointer}
+    .app{display:grid;grid-template-columns:292px 1fr;min-height:100vh}
+    .sidebar{position:sticky;top:0;height:100vh;padding:18px;background:rgba(9,13,24,.82);backdrop-filter:blur(18px);border-right:1px solid var(--line);overflow:auto}
+    .brand{display:flex;align-items:center;gap:12px;padding:12px 10px 22px}.logo{width:43px;height:43px;border-radius:14px;background:linear-gradient(135deg,var(--brand),#ffb15d);display:grid;place-items:center;box-shadow:0 12px 28px rgba(244,129,32,.25)}
+    .brand h1{font-size:15px;line-height:1.2;margin:0}.brand small{color:var(--muted)}
+    .nav{display:grid;gap:8px}.nav button{width:100%;border:0;background:transparent;color:#b9c4d8;text-align:left;padding:12px 13px;border-radius:15px;display:flex;align-items:center;gap:10px}.nav button.active,.nav button:hover{background:rgba(244,129,32,.13);color:#fff}.nav span{width:24px;text-align:center}
+    .sidecard{margin-top:16px;padding:14px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))}.sidecard p{margin:6px 0;color:var(--muted);font-size:12px;line-height:1.5}
+    main{padding:22px;max-width:1220px;width:100%;margin:0 auto}.topbar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}.hamb{display:none}.pill{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.04);color:#c9d5e9;font-size:13px}.cf-link{color:var(--brand2);text-decoration:none}.grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px}.section{display:none}.section.active{display:block}.card{background:linear-gradient(180deg,rgba(17,26,46,.92),rgba(11,16,31,.95));border:1px solid var(--line);box-shadow:var(--shadow);border-radius:var(--radius);padding:18px}.card h2,.card h3{margin:0 0 12px}.muted{color:var(--muted)}.tiny{font-size:12px}.row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.field{display:grid;gap:7px;margin:10px 0}.field label{color:#c7d2e8;font-size:13px}.input,.select,.textarea{width:100%;background:#080d1a;border:1px solid var(--line);border-radius:14px;padding:12px 13px;outline:0}.input:focus,.select:focus,.textarea:focus{border-color:rgba(244,129,32,.7);box-shadow:0 0 0 4px rgba(244,129,32,.12)}.textarea{min-height:92px;resize:vertical}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.btn{border:0;border-radius:14px;padding:12px 15px;background:rgba(255,255,255,.08);color:#fff}.btn.primary{background:linear-gradient(135deg,var(--brand),#ffac54);color:#160b02;font-weight:800}.btn.green{background:rgba(46,229,157,.16);color:var(--green);border:1px solid rgba(46,229,157,.25)}.btn.red{background:rgba(255,91,124,.16);color:var(--red);border:1px solid rgba(255,91,124,.25)}.btn:disabled{opacity:.55;cursor:not-allowed}.signal{display:grid;place-items:center;text-align:center;min-height:260px;border-radius:22px;background:radial-gradient(circle at 50% 0,rgba(110,168,254,.16),transparent 55%),#080d1a;border:1px solid var(--line)}.signal .dir{font-size:48px;font-weight:900;letter-spacing:.02em}.signal.buy .dir{color:var(--green)}.signal.sell .dir{color:var(--red)}.signal.hold .dir{color:#d7deea}.conf{font-size:42px;font-weight:900}.bar{height:10px;background:#111b31;border-radius:999px;overflow:hidden;margin:10px 0}.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red),#ffd166,var(--green));transition:.3s}.agents{display:grid;gap:10px}.agent{display:grid;grid-template-columns:42px minmax(0,1fr) auto auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:17px;padding:12px;background:rgba(255,255,255,.035)}.agent .ico{width:42px;height:42px;border-radius:14px;background:rgba(244,129,32,.12);display:grid;place-items:center;font-size:21px}.tag{font-size:12px;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.07);color:#c8d4e8}.tag.bullish{color:var(--green);background:rgba(46,229,157,.12)}.tag.bearish{color:var(--red);background:rgba(255,91,124,.12)}.code{white-space:pre-wrap;word-break:break-word;background:#050913;border:1px solid var(--line);border-radius:15px;padding:13px;color:#dbe6f7;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.55}.list{margin:8px 0 0;padding-left:19px;color:#c8d4e8}.list li{margin:7px 0}.notice{border-left:4px solid var(--brand);background:rgba(244,129,32,.1);padding:12px 13px;border-radius:14px;color:#ffe2bf}.switch{display:flex;align-items:center;gap:9px}.switch input{width:42px;height:22px}.mobile-only{display:none}.toast{position:fixed;right:18px;bottom:18px;max-width:360px;background:#0c1426;border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow);display:none;z-index:10}.toast.show{display:block}
+    @media(max-width:920px){.app{grid-template-columns:1fr}.sidebar{position:fixed;z-index:5;left:0;top:0;transform:translateX(-105%);transition:.25s;width:290px}.sidebar.open{transform:none}.hamb{display:inline-flex}.grid{grid-template-columns:1fr}.row,.row3{grid-template-columns:1fr}main{padding:14px}.topbar{position:sticky;top:0;z-index:4;background:rgba(7,10,18,.78);backdrop-filter:blur(14px);padding:8px 0}.mobile-only{display:inline-flex}.signal .dir{font-size:38px}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 64 64" fill="none"><path d="M17 43h31c6 0 10-4 10-9 0-5-4-9-10-9h-1C45 15 36 8 25 11 16 13 10 21 10 31c-5 1-8 5-8 10 0 6 5 11 11 11h33" stroke="#2b1604" stroke-width="5" stroke-linecap="round"/><path d="M18 41h31c4 0 7-3 7-7s-3-7-8-7h-4l-1-4c-2-7-9-11-17-10-8 2-13 8-13 16v3h-2c-4 0-7 3-7 7s3 7 7 7h8" stroke="#fff7ec" stroke-width="4" stroke-linecap="round"/></svg>
+        </div>
+        <div><h1>Valetax MT5<br/>AI Bot</h1><small>Cloudflare Workers AI</small></div>
+      </div>
+      <nav class="nav" id="nav">
+        <button class="active" data-section="dashboard"><span>🤖</span> Dashboard Agent</button>
+        <button data-section="account"><span>👤</span> Login Akun MT5</button>
+        <button data-section="pairs"><span>🔗</span> Link Pairs</button>
+        <button data-section="agents"><span>🧠</span> 5 AI Agents</button>
+        <button data-section="mt5"><span>📟</span> MT5 EA</button>
+        <button data-section="settings"><span>🔑</span> API Key</button>
+        <button data-section="deploy"><span>☁️</span> Deploy Cloudflare</button>
+      </nav>
+      <div class="sidecard">
+        <strong>Status</strong>
+        <p id="health">Belum cek koneksi.</p>
+        <button class="btn" onclick="checkHealth()">Cek Worker</button>
+      </div>
+      <div class="sidecard">
+        <strong>Risk Reminder</strong>
+        <p>Gunakan demo dulu. Aktifkan auto trade hanya jika memahami risiko. Tidak ada AI yang menjamin profit.</p>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <button class="btn hamb" onclick="toggleMenu()">☰ Menu</button>
+        <div>
+          <div class="pill">🕒 <span id="clock">--</span></div>
+          <a class="pill cf-link" href="https://developers.cloudflare.com/workers-ai/" target="_blank" rel="noreferrer" title="Cloudflare Workers AI">
+            ☁️ Cloudflare AI Docs
+          </a>
+        </div>
+        <div class="pill" id="modePill">Mode: Manual Confirm</div>
+      </div>
+
+      <section id="dashboard" class="section active">
+        <div class="grid">
+          <div class="card">
+            <h2>Analisa Bullish / Bearish</h2>
+            <p class="muted">Isi simbol/pair, indikator dari MT5 atau manual, lalu klik analisa. EA MT5 juga dapat mengirim indikator otomatis ke endpoint <code>/api/signal</code>.</p>
+            <div class="row">
+              <div class="field"><label>Symbol / Pair</label><input class="input" id="symbol" value="XAUUSD" placeholder="XAUUSD, EURUSD, BTCUSD" /></div>
+              <div class="field"><label>Link Pair / Chart</label><input class="input" id="pairLink" placeholder="https://... atau nama watchlist" /></div>
+            </div>
+            <div class="row3">
+              <div class="field"><label>Price <button class="btn tiny" type="button" onclick="updateQuote('XAUUSD')">↻ XAUUSD now</button></label><input class="input" id="price" type="number" step="0.00001" value="4448.98" placeholder="contoh 4448.98" /></div>
+              <div class="field"><label>EMA Fast</label><input class="input" id="emaFast" type="number" step="0.00001" placeholder="otomatis dari EA" /></div>
+              <div class="field"><label>EMA Slow</label><input class="input" id="emaSlow" type="number" step="0.00001" placeholder="otomatis dari EA" /></div>
+            </div>
+            <div class="row3">
+              <div class="field"><label>RSI</label><input class="input" id="rsi" type="number" value="50" step="0.1" /></div>
+              <div class="field"><label>ATR Points</label><input class="input" id="atrPoints" type="number" value="250" step="1" /></div>
+              <div class="field"><label>Spread Points</label><input class="input" id="spreadPoints" type="number" value="20" step="1" /></div>
+            </div>
+            <div class="row3">
+              <div class="field"><label>Candle Direction</label><select class="select" id="candleDir"><option>neutral</option><option>bullish</option><option>bearish</option></select></div>
+              <div class="field"><label>Min Confidence %</label><input class="input" id="minConfidence" type="number" value="65" min="1" max="100" /></div>
+              <div class="field"><label>Risk % per Trade</label><input class="input" id="riskPercent" type="number" value="1" min="0.1" max="5" step="0.1" /></div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" onclick="analyze()">🔮 Analisa Sekarang</button>
+              <button class="btn green" id="autoBtn" onclick="toggleAuto()">▶ Auto Analyze</button>
+              <button class="btn" onclick="fillDemo('bullish')">Demo Bullish</button>
+              <button class="btn" onclick="fillDemo('bearish')">Demo Bearish</button>
+            </div>
+            <div class="field switch">
+              <input id="humanConfirm" type="checkbox" checked onchange="saveSettings();updateMode()" />
+              <label for="humanConfirm">Manual confirmation aktif. Jika dimatikan dan EA AllowAutoTrade=true, EA boleh eksekusi sinyal.</label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div id="signalBox" class="signal hold">
+              <div>
+                <div class="muted">Signal</div>
+                <div class="dir" id="signalDir">HOLD</div>
+                <div class="conf"><span id="confidence">0</span>%</div>
+                <div class="bar"><i id="confBar"></i></div>
+                <p id="summary" class="muted">Belum ada analisa.</p>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn green" onclick="copySignal()">Copy Signal JSON</button>
+              <button class="btn red" onclick="panicHold()">Panic: HOLD</button>
+            </div>
+            <pre class="code" id="lastJson">{}</pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="account" class="section">
+        <div class="card">
+          <h2>Login Akun MT5 Valetax</h2>
+          <div class="notice">Demi keamanan, password akun Valetax/MT5 <b>tidak disimpan</b> di HTML, Cloudflare Worker, atau localStorage. Login akun trading tetap dilakukan di terminal MT5. Form ini menyimpan nomor login/server untuk validasi EA agar bot hanya berjalan pada akun yang benar.</div>
+          <div class="row">
+            <div class="field"><label>Nomor Login MT5</label><input class="input" id="mt5Login" inputmode="numeric" placeholder="contoh 12345678" /></div>
+            <div class="field"><label>Server MT5 Valetax</label><input class="input" id="mt5Server" placeholder="contoh Valetax-Live / Valetax-Demo" /></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Tipe Akun</label><select class="select" id="mt5AccountType"><option value="demo">Demo</option><option value="live">Live</option></select></div>
+            <div class="field"><label>Nama / Label Akun</label><input class="input" id="mt5AccountLabel" placeholder="contoh Valetax Demo XAU" /></div>
+          </div>
+          <div class="field switch">
+            <input id="requireAccountMatch" type="checkbox" checked onchange="saveSettings();renderAccountConfig()" />
+            <label for="requireAccountMatch">Wajibkan EA cocok dengan nomor login dan server ini. Jika tidak cocok, EA berhenti / tidak trading.</label>
+          </div>
+          <div class="actions">
+            <button class="btn primary" onclick="saveSettings();renderAccountConfig();toast('Data akun MT5 disimpan lokal tanpa password.')">Simpan Akun</button>
+            <button class="btn green" onclick="copyAccountConfig()">Copy Input EA</button>
+          </div>
+          <h3>Input yang dipakai di EA</h3>
+          <pre class="code" id="accountConfig">Belum ada data akun.</pre>
+          <ol class="list">
+            <li>Buka MT5 Valetax → <b>File → Login to Trade Account</b>.</li>
+            <li>Masukkan nomor login, password, dan server langsung di MT5.</li>
+            <li>Attach EA lalu isi <code>InpExpectedAccountLogin</code> dan <code>InpExpectedAccountServer</code> sesuai data di atas.</li>
+            <li>Jika akun MT5 tidak cocok, EA tidak akan auto trade.</li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="pairs" class="section">
+        <div class="card">
+          <h2>Kolom Input Link Pairs</h2>
+          <p class="muted">Simpan daftar symbol dan link chart/watchlist. Link ini untuk referensi UI; EA tetap trading memakai symbol MT5 yang sedang dipasang di chart.</p>
+          <div class="row">
+            <div class="field"><label>Symbol</label><input class="input" id="pairSymbol" placeholder="EURUSD" /></div>
+            <div class="field"><label>Link Pair</label><input class="input" id="pairUrl" placeholder="https://..." /></div>
+          </div>
+          <button class="btn primary" onclick="addPair()">+ Tambah Pair</button>
+          <div id="pairsList" style="margin-top:14px" class="agents"></div>
+        </div>
+      </section>
+
+      <section id="agents" class="section">
+        <div class="card">
+          <h2>5 AI Agent Terintegrasi</h2>
+          <p class="muted">Worker memakai 5 agent scoring lalu, jika binding Cloudflare AI aktif, meminta AI melakukan consensus konservatif.</p>
+          <div id="agentsList" class="agents"></div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <h3>Cloudflare AI Prompt Test</h3>
+          <textarea class="textarea" id="prompt" placeholder="Tanya risk plan, validasi sinyal, atau audit strategi..."></textarea>
+          <div class="actions"><button class="btn primary" onclick="askAi()">Tanya AI</button></div>
+          <pre class="code" id="aiAnswer">Belum ada jawaban.</pre>
+        </div>
+      </section>
+
+      <section id="mt5" class="section">
+        <div class="card">
+          <h2>EA untuk MT5 Valetax</h2>
+          <div class="notice">HTML/browser tidak bisa klik order langsung ke Valetax MT5. Arsitektur aman: UI + Cloudflare Worker membuat sinyal, lalu EA MQL5 di terminal MT5 yang mengeksekusi order.</div>
+          <ol class="list">
+            <li>Login ke akun Valetax MT5 langsung di terminal MT5: <b>File → Login to Trade Account</b>.</li>
+            <li>Isi menu <b>Login Akun MT5</b> di aplikasi ini untuk membuat input guard akun EA.</li>
+            <li>Copy file <code>mql5/ValetaxCloudflareAIBot.mq5</code> ke <code>MQL5/Experts</code>, lalu Compile di MetaEditor.</li>
+            <li>MT5: <b>Tools → Options → Expert Advisors</b>, centang <b>Allow WebRequest</b> dan tambahkan URL Worker Cloudflare Anda.</li>
+            <li>Attach EA ke chart symbol yang ingin dipakai. Set <code>WorkerUrl</code>, <code>AppToken</code>, risk, dan <code>AllowAutoTrade</code>.</li>
+            <li>Uji pada akun demo minimal beberapa minggu sebelum live.</li>
+          </ol>
+          <h3>Endpoint EA</h3>
+          <pre class="code" id="eaEndpoint"></pre>
+        </div>
+      </section>
+
+      <section id="settings" class="section">
+        <div class="card">
+          <h2>Pengaturan API Key / Token</h2>
+          <p class="muted">Jangan taruh secret broker di browser. Untuk Cloudflare Worker pakai <code>APP_TOKEN</code> sebagai token sederhana antara UI/EA dan API.</p>
+          <div class="field"><label>Cloudflare Worker URL</label><input class="input" id="workerUrl" placeholder="https://valetax-mt5-ai-bot.nama.workers.dev" /></div>
+          <div class="field"><label>APP_TOKEN / API Key</label><input class="input" id="appToken" type="password" placeholder="sama dengan wrangler secret APP_TOKEN" /></div>
+          <div class="row">
+            <div class="field"><label>Default Max Spread Points</label><input class="input" id="maxSpreadPoints" type="number" value="35" /></div>
+            <div class="field"><label>Risk Reward Ratio</label><input class="input" id="rr" type="number" step="0.1" value="1.5" /></div>
+          </div>
+          <div class="actions"><button class="btn primary" onclick="saveSettings();toast('Pengaturan disimpan di localStorage browser.')">Simpan</button><button class="btn" onclick="clearSettings()">Reset</button></div>
+        </div>
+      </section>
+
+      <section id="deploy" class="section">
+        <div class="card">
+          <h2>Deploy ke Cloudflare Workspace</h2>
+          <p class="muted">Project ini siap deploy sebagai Cloudflare Worker + Static Assets + Workers AI binding.</p>
+          <pre class="code">npm install
+npm run cf:secret   # isi APP_TOKEN rahasia
+npm run deploy</pre>
+          <h3>Yang perlu disiapkan</h3>
+          <ul class="list">
+            <li>Akun Cloudflare dengan Workers dan Workers AI aktif.</li>
+            <li>Node.js 18+ dan Wrangler CLI.</li>
+            <li>Domain/route opsional, misalnya <code>bot.domainanda.com</code>.</li>
+            <li>MT5 Valetax desktop/VPS aktif untuk menjalankan EA 24/5.</li>
+            <li>Jurnal trading, batas daily loss, dan akun demo untuk forward test.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+
+<script>
+const $ = (id)=>document.getElementById(id);
+let lastSignal = null, autoTimer = null;
+const storageKey = 'valetax-mt5-ai-bot-settings-v1';
+const pairsKey = 'valetax-mt5-ai-bot-pairs-v1';
+
+function toggleMenu(){ $('sidebar').classList.toggle('open'); }
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3200); }
+function nowClock(){ $('clock').textContent = new Date().toLocaleString('id-ID'); } setInterval(nowClock,1000); nowClock();
+
+document.querySelectorAll('#nav button').forEach(btn=>btn.addEventListener('click',()=>{
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  $(btn.dataset.section).classList.add('active');
+  $('sidebar').classList.remove('open');
+  renderDynamic();
+}));
+
+function settings(){ try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{return {}} }
+function saveSettings(){
+  const s = settings();
+  ['workerUrl','appToken','maxSpreadPoints','rr','mt5Login','mt5Server','mt5AccountType','mt5AccountLabel'].forEach(id=>{ if($(id)) s[id]=$(id).value; });
+  s.humanConfirm = $('humanConfirm')?.checked ?? true;
+  s.requireAccountMatch = $('requireAccountMatch')?.checked ?? true;
+  localStorage.setItem(storageKey, JSON.stringify(s));
+  updateMode(); renderEndpoint(); renderAccountConfig();
+}
+function loadSettings(){
+  const s=settings();
+  ['workerUrl','appToken','maxSpreadPoints','rr','mt5Login','mt5Server','mt5AccountType','mt5AccountLabel'].forEach(id=>{ if($(id)&&s[id]!==undefined) $(id).value=s[id]; });
+  if($('humanConfirm')) $('humanConfirm').checked = s.humanConfirm !== false;
+  if($('requireAccountMatch')) $('requireAccountMatch').checked = s.requireAccountMatch !== false;
+  updateMode(); renderEndpoint(); renderAccountConfig(); renderPairs();
+}
+function clearSettings(){ localStorage.removeItem(storageKey); location.reload(); }
+function updateMode(){ $('modePill').textContent = ($('humanConfirm')?.checked!==false) ? 'Mode: Manual Confirm' : 'Mode: Auto Trade Signal'; }
+function apiBase(){ return ($('workerUrl')?.value || location.origin).replace(/\/$/,''); }
+function token(){ return $('appToken')?.value || settings().appToken || ''; }
+function headers(){ return {'content-type':'application/json','x-app-token':token()}; }
+
+async function checkHealth(){
+  try{ const r=await fetch(apiBase()+'/api/health'); const j=await r.json(); $('health').textContent = j.ok ? 'Online: '+j.time : 'Error'; }
+  catch(e){ $('health').textContent='Gagal koneksi. Cek Worker URL.'; }
+}
+
+async function updateQuote(symbol='XAUUSD'){
+  saveSettings();
+  const selected = ($('symbol')?.value || symbol || 'XAUUSD').toUpperCase();
+  try{
+    const r=await fetch(`${apiBase()}/api/quote?symbol=${encodeURIComponent(selected)}`,{headers:headers()});
+    const j=await r.json();
+    if(!r.ok||!j.ok) throw new Error(j.error||'Quote API error');
+    $('symbol').value=j.symbol||selected;
+    $('price').value=j.price;
+    toast(`Harga ${j.symbol}: ${j.price} (${j.quoteTime||j.provider})`);
+  }catch(e){ toast('Gagal update harga: '+e.message); }
+}
+
+function collectInput(){ 
+  return {
+    symbol:$('symbol').value||'XAUUSD', pairLink:$('pairLink').value,
+    price:$('price').value, emaFast:$('emaFast').value, emaSlow:$('emaSlow').value,
+    rsi:$('rsi').value, atrPoints:$('atrPoints').value, spreadPoints:$('spreadPoints').value,
+    candleDir:$('candleDir').value, minConfidence:$('minConfidence').value,
+    riskPercent:$('riskPercent').value, maxSpreadPoints:$('maxSpreadPoints').value||35, rr:$('rr').value||1.5,
+    mt5Login:$('mt5Login')?.value||settings().mt5Login||'', mt5Server:$('mt5Server')?.value||settings().mt5Server||'', accountType:$('mt5AccountType')?.value||settings().mt5AccountType||'demo'
+  };
+}
+async function analyze(){
+  saveSettings();
+  $('summary').textContent='Menganalisa...';
+  try{
+    const r=await fetch(apiBase()+'/api/analyze',{method:'POST',headers:headers(),body:JSON.stringify(collectInput())});
+    const j=await r.json();
+    if(!r.ok||!j.ok) throw new Error(j.error||'API error');
+    lastSignal=j; renderSignal(j); renderAgents(j.agents); toast('Analisa selesai: '+j.action.toUpperCase());
+  }catch(e){ $('summary').textContent=e.message; toast('Error: '+e.message); }
+}
+function renderSignal(j){
+  lastSignal=j; $('lastJson').textContent=JSON.stringify(j,null,2);
+  const box=$('signalBox'); box.className='signal '+(j.action||'hold');
+  $('signalDir').textContent=(j.action||'hold').toUpperCase()+' / '+(j.direction||'neutral').toUpperCase();
+  $('confidence').textContent=j.confidence||0; $('confBar').style.width=(j.confidence||0)+'%';
+  $('summary').textContent=j.summary||'-';
+}
+function renderAgents(list){
+  const defaults=[
+    {id:'trend',name:'Trend Agent',icon:'📈',direction:'neutral',confidence:0,reason:'EMA fast vs slow'},
+    {id:'momentum',name:'Momentum Agent',icon:'⚡',direction:'neutral',confidence:0,reason:'RSI / momentum'},
+    {id:'volatility',name:'Volatility Agent',icon:'🌊',direction:'neutral',confidence:0,reason:'ATR / volatility'},
+    {id:'pattern',name:'Price Action Agent',icon:'🕯️',direction:'neutral',confidence:0,reason:'Candle pattern'},
+    {id:'risk',name:'Risk Guard Agent',icon:'🛡️',direction:'neutral',confidence:0,reason:'Spread/risk filter'}
+  ];
+  const data=list&&list.length?list:defaults;
+  $('agentsList').innerHTML=data.map(a=>`<div class="agent"><div class="ico">${a.icon||'🤖'}</div><div><b>${a.name}</b><div class="muted tiny">${a.reason||''}</div></div><span class="tag ${a.direction}">${a.direction} ${a.confidence||0}%</span></div>`).join('');
+}
+function fillDemo(type){
+  $('price').value= type==='bullish'?4448.98:4448.98; $('emaFast').value= type==='bullish'?4455:4440;
+  $('emaSlow').value= type==='bullish'?4448:4454; $('rsi').value= type==='bullish'?62:38;
+  $('atrPoints').value=260; $('spreadPoints').value=18; $('candleDir').value=type;
+}
+function toggleAuto(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; $('autoBtn').textContent='▶ Auto Analyze'; $('autoBtn').className='btn green'; return; }
+  analyze(); autoTimer=setInterval(analyze, 15000); $('autoBtn').textContent='⏸ Stop Auto'; $('autoBtn').className='btn red';
+}
+function copySignal(){ navigator.clipboard?.writeText(JSON.stringify(lastSignal||{},null,2)); toast('Signal JSON dicopy.'); }
+function panicHold(){ renderSignal({action:'hold',direction:'neutral',confidence:0,summary:'Manual panic HOLD.'}); }
+
+function addPair(){
+  const symbol=$('pairSymbol').value.trim().toUpperCase(), url=$('pairUrl').value.trim(); if(!symbol) return toast('Symbol wajib diisi');
+  const arr=JSON.parse(localStorage.getItem(pairsKey)||'[]'); arr.push({symbol,url,ts:Date.now()}); localStorage.setItem(pairsKey,JSON.stringify(arr));
+  $('pairSymbol').value=''; $('pairUrl').value=''; renderPairs();
+}
+function renderPairs(){
+  const arr=JSON.parse(localStorage.getItem(pairsKey)||'[]');
+  $('pairsList').innerHTML = arr.length?arr.map((p,i)=>`<div class="agent"><div class="ico">🔗</div><div><b>${p.symbol}</b><div class="muted tiny">${p.url||'tanpa link'}</div></div><button class="btn" onclick="usePair(${i})">Pakai</button><button class="btn red" onclick="delPair(${i})">Hapus</button></div>`).join(''):'<p class="muted">Belum ada pair tersimpan.</p>';
+}
+function usePair(i){ const arr=JSON.parse(localStorage.getItem(pairsKey)||'[]'); const p=arr[i]; if(!p)return; $('symbol').value=p.symbol; $('pairLink').value=p.url; document.querySelector('[data-section="dashboard"]').click(); }
+function delPair(i){ const arr=JSON.parse(localStorage.getItem(pairsKey)||'[]'); arr.splice(i,1); localStorage.setItem(pairsKey,JSON.stringify(arr)); renderPairs(); }
+
+function renderAccountConfig(){
+  const s=settings();
+  const login = $('mt5Login')?.value || s.mt5Login || '0';
+  const server = $('mt5Server')?.value || s.mt5Server || 'Valetax-Demo';
+  const require = $('requireAccountMatch')?.checked ?? (s.requireAccountMatch !== false);
+  const label = $('mt5AccountLabel')?.value || s.mt5AccountLabel || '-';
+  if($('accountConfig')) $('accountConfig').textContent = `Label=${label}\nTipeAkun=${$('mt5AccountType')?.value || s.mt5AccountType || 'demo'}\nInpExpectedAccountLogin=${login || 0}\nInpExpectedAccountServer=${server}\nInpRequireAccountMatch=${require ? 'true' : 'false'}\n\nCatatan: Password MT5 tetap dimasukkan langsung di terminal MT5, bukan di aplikasi ini.`;
+}
+function copyAccountConfig(){
+  renderAccountConfig();
+  navigator.clipboard?.writeText($('accountConfig')?.textContent || '');
+  toast('Input akun EA dicopy.');
+}
+
+async function askAi(){ 
+  try{ const r=await fetch(apiBase()+'/api/prompt',{method:'POST',headers:headers(),body:JSON.stringify({prompt:$('prompt').value})}); const j=await r.json(); if(!r.ok||!j.ok) throw new Error(j.error||'API error'); $('aiAnswer').textContent=j.answer; }
+  catch(e){ $('aiAnswer').textContent=e.message; }
+}
+function renderEndpoint(){
+  const base=apiBase(); const tk=token()?'&token='+encodeURIComponent(token()):'&token=YOUR_APP_TOKEN';
+  const s=settings();
+  const login = encodeURIComponent($('mt5Login')?.value || s.mt5Login || '0');
+  const server = encodeURIComponent($('mt5Server')?.value || s.mt5Server || 'Valetax-Demo');
+  $('eaEndpoint').textContent = `${base}/api/signal?symbol=XAUUSD&price=4448.98&emaFast=4455&emaSlow=4448&rsi=62&atrPoints=250&spreadPoints=20&mt5Login=${login}&mt5Server=${server}${tk}`;
+}
+function renderDynamic(){ renderAgents(lastSignal?.agents); renderPairs(); renderEndpoint(); renderAccountConfig(); }
+loadSettings(); renderAgents();
+</script>
+</body>
+</html>
