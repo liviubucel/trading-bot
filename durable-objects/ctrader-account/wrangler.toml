@@ -23,7 +23,7 @@ class_name = "CTraderAccount"
 # We must export the class for the migration
 [[migrations]]
 tag = "v1"
-new_classes = ["CTraderAccount"]
+new_sqlite_classes = ["CTraderAccount"]
 
 [env.staging]
 vars = { CTRADER_API_HOST = "demo.ctraderapi.com", CTRADER_API_PORT = "5035", CTRADER_USE_SSL = "true" }
