@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "npm run build -w packages/contracts -w packages/ctrader-protocol -w packages/market-models -w packages/risk-engine && npm run build -w durable-objects/ctrader-account && npm run build -w workers/api -w workers/risk -w workers/telegram -w workers/news && npm run build -w apps/dashboard",
     "test": "vitest run"
   },
   "devDependencies": {
