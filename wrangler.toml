@@ -18,4 +18,4 @@ class_name = "CTraderAccount"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["CTraderAccount"]
+new_sqlite_classes = ["CTraderAccount"]
