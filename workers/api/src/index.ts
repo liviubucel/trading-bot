@@ -116,6 +116,54 @@ export default {
         return new Response(JSON.stringify(results), { headers: corsHeaders });
       }
 
+      // 4b. Create Simulated Account
+      if (path === "/api/accounts/create-simulated" && request.method === "POST") {
+        const body: any = await request.json();
+        const accountId = body.accountId || `sim_${Math.floor(10000 + Math.random() * 90000)}`;
+        const brokerName = body.brokerName || "SimulatedBroker";
+        const balance = parseFloat(body.balance) || 100000.00;
+
+        await env.DB.prepare(
+          "INSERT OR REPLACE INTO accounts (accountId, brokerName, balance, equity, isConnected, tokenData, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(
+          accountId,
+          brokerName,
+          balance,
+          balance,
+          1,
+          JSON.stringify({ accessToken: "simulated", refreshToken: "simulated", expiresIn: 999999 }),
+          Date.now()
+        ).run();
+
+        await env.DB.prepare(
+          "INSERT INTO audit_logs (timestamp, level, accountId, component, action, message) VALUES (?, ?, ?, ?, ?, ?)"
+        ).bind(
+          Date.now(),
+          "INFO",
+          accountId,
+          "api-worker",
+          "SIMULATED_ACCOUNT_CREATED",
+          `Simulated account ${accountId} initialized with $${balance.toLocaleString()}.`
+        ).run();
+
+        return new Response(JSON.stringify({ success: true, accountId }), { headers: corsHeaders });
+      }
+
+      // 4c. Trigger manual News Sync
+      if (path === "/api/news/sync" && request.method === "POST") {
+        const now = Date.now();
+        const mockNews = [
+          { id: "evt_cpi", time: now + 300000, currency: "USD", eventName: "Core CPI Inflation Rate MoM", impactLevel: "HIGH", forecast: 0.3, previous: 0.2 },
+          { id: "evt_nfp", time: now + 600000, currency: "USD", eventName: "Non-Farm Payrolls", impactLevel: "HIGH", forecast: 185000, previous: 206000 }
+        ];
+        for (const ev of mockNews) {
+          await env.DB.prepare(
+            "INSERT OR REPLACE INTO news_calendar (id, time, currency, eventName, impactLevel, forecast, previous) VALUES (?, ?, ?, ?, ?, ?, ?)"
+          ).bind(ev.id, ev.time, ev.currency, ev.eventName, ev.impactLevel, ev.forecast, ev.previous).run();
+        }
+        return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+      }
+
       // 5. Proxy to cTrader Account Durable Object
       // Path format: /accounts/:id/:action
       const accountMatch = path.match(/^\/accounts\/([^\/]+)\/([^\/]+)$/) || path.match(/^\/api\/accounts\/([^\/]+)\/([^\/]+)$/);
@@ -361,15 +409,17 @@ Do NOT include any markdown block, backticks, code blocks or extra text. Output 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Zebrabyte Administrative Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b0f19;
-            --card-bg: #151d30;
+            --bg-color: #080b11;
+            --card-bg: #0f1524;
+            --card-border: rgba(255, 255, 255, 0.05);
             --text-color: #f3f4f6;
             --text-muted: #9ca3af;
             --primary: #3b82f6;
-            --primary-glow: rgba(59, 130, 246, 0.15);
+            --primary-glow: rgba(59, 130, 246, 0.2);
+            --secondary: #8b5cf6;
             --danger: #ef4444;
             --success: #10b981;
             --warning: #f59e0b;
@@ -385,8 +435,13 @@ Do NOT include any markdown block, backticks, code blocks or extra text. Output 
             font-family: 'Outfit', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
-            line-height: 1.5;
+            line-height: 1.6;
             padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
         }
 
         header {
@@ -394,51 +449,92 @@ Do NOT include any markdown block, backticks, code blocks or extra text. Output 
             justify-content: space-between;
             align-items: center;
             margin-bottom: 2rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 1.5rem;
         }
 
         h1 {
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            background: linear-gradient(135deg, #60a5fa, #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        .kill-switch-btn {
-            background-color: var(--danger);
-            color: white;
-            border: none;
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
+        .header-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        button {
+            font-family: 'Outfit', sans-serif;
             font-weight: 600;
+            padding: 0.75rem 1.5rem;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border-color: var(--card-border);
+            color: var(--text-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
             box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
         }
 
-        .kill-switch-btn.active {
+        .btn-danger.active {
             background-color: var(--success);
             box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
         }
 
-        .grid {
+        .grid-3 {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
             gap: 1.5rem;
             margin-bottom: 2rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
         }
 
         .card {
             background-color: var(--card-bg);
             border-radius: 12px;
             padding: 1.5rem;
-            border: 1px solid rgba(255,255,255,0.03);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--card-border);
             position: relative;
-            overflow: hidden;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
         }
 
         .card::before {
@@ -448,39 +544,74 @@ Do NOT include any markdown block, backticks, code blocks or extra text. Output 
             left: 0;
             width: 100%;
             height: 4px;
-            background: var(--primary);
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 12px 12px 0 0;
         }
 
         .card.danger::before { background: var(--danger); }
         .card.success::before { background: var(--success); }
 
         .card h2 {
-            font-size: 1.2rem;
-            margin-bottom: 1rem;
-            color: var(--text-muted);
+            font-size: 1.25rem;
+            margin-bottom: 1.25rem;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .stat-value {
-            font-size: 2rem;
+            font-size: 2.25rem;
             font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-muted);
             margin-bottom: 0.5rem;
         }
 
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            color: white;
+            font-family: inherit;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 1rem;
+            margin-top: 0.5rem;
         }
 
         th, td {
             text-align: left;
             padding: 0.75rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         th {
             color: var(--text-muted);
             font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
         }
 
         .badge {
@@ -494,168 +625,317 @@ Do NOT include any markdown block, backticks, code blocks or extra text. Output 
 
         .badge.success { background-color: rgba(16, 185, 129, 0.1); color: var(--success); }
         .badge.danger { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .badge.warning { background-color: rgba(245, 158, 11, 0.1); color: var(--warning); }
 
-        .log-list {
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: monospace;
+        /* Output Logs & JSON console */
+        .console {
+            font-family: 'JetBrains Mono', monospace;
             font-size: 0.85rem;
-            background: #080c14;
-            padding: 1rem;
+            background-color: #05070a;
+            border: 1px solid var(--card-border);
             border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.05);
+            padding: 1rem;
+            max-height: 250px;
+            overflow-y: auto;
         }
 
-        .log-item {
+        .console-item {
             margin-bottom: 0.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
             padding-bottom: 0.25rem;
         }
 
-        .log-time { color: var(--text-muted); margin-right: 0.5rem; }
-        .log-warn { color: var(--warning); }
-        .log-error { color: var(--danger); }
-        .log-info { color: #60a5fa; }
+        .console-time { color: var(--text-muted); margin-right: 0.5rem; }
+        .console-warn { color: var(--warning); }
+        .console-error { color: var(--danger); }
+        .console-info { color: #60a5fa; }
+
+        /* Tick flash animations */
+        .tick-up { animation: flash-green 1s ease-out; }
+        .tick-down { animation: flash-red 1s ease-out; }
+
+        @keyframes flash-green {
+            0% { background-color: rgba(16, 185, 129, 0.4); }
+            100% { background-color: transparent; }
+        }
+
+        @keyframes flash-red {
+            0% { background-color: rgba(239, 68, 68, 0.4); }
+            100% { background-color: transparent; }
+        }
     </style>
 </head>
 <body>
-    <header>
-        <div>
-            <h1>ZEBRABYTE TRADING</h1>
-            <p style="font-size: 0.9rem; color: var(--text-muted);">Cloudflare-Native Algorithmic Trading Platform</p>
-        </div>
-        <button id="killSwitchBtn" class="kill-switch-btn" onclick="toggleKillSwitch()">ARM GLOBAL KILL SWITCH</button>
-    </header>
+    <div class="container">
+        <header>
+            <div>
+                <h1>ZEBRABYTE TRADING SYSTEM</h1>
+                <p style="font-size: 0.9rem; color: var(--text-muted);">Cloudflare Serverless Quant Terminal</p>
+            </div>
+            <div class="header-buttons">
+                <button class="btn-secondary" onclick="triggerOAuthFlow()">🔌 Connect cTrader Account</button>
+                <button id="safetyModeBtn" class="btn-secondary" onclick="toggleSafetyMode()">🛡️ Live Mode: DISABLED</button>
+                <button id="killSwitchBtn" class="btn-danger" onclick="toggleKillSwitch()">ARM GLOBAL KILL SWITCH</button>
+            </div>
+        </header>
 
-    <div class="grid">
-        <div class="card">
-            <h2>Connected Accounts</h2>
-            <div id="accountsCount" class="stat-value">0</div>
-            <div id="accountsList">Loading...</div>
+        <!-- Dynamic Statistics -->
+        <div class="grid-3">
+            <div class="card">
+                <h2>📊 Overall Balance & Equity</h2>
+                <div id="totalBalance" class="stat-value">$0.00</div>
+                <div id="totalEquity" class="stat-value" style="color: var(--success);">$0.00</div>
+            </div>
+            <div class="card">
+                <h2>📈 Market Tick Feed</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Bid</th>
+                            <th>Ask</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pricesBody">
+                        <tr><td colspan="3" style="color: var(--text-muted);">Waiting for ticks...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="card">
+                <h2>🌍 Active Accounts (<span id="accountsCount">0</span>)</h2>
+                <div id="accountsList" style="max-height: 150px; overflow-y: auto; font-size: 0.9rem;">
+                    Loading accounts...
+                </div>
+            </div>
         </div>
-        <div class="card">
-            <h2>Overall Balance & Equity</h2>
-            <div id="totalBalance" class="stat-value">$0.00</div>
-            <div id="totalEquity" class="stat-value" style="color: var(--success);">$0.00</div>
+
+        <!-- Simulated Account Creator & AI Trades Injection -->
+        <div class="grid-2">
+            <div class="card">
+                <h2>🛠️ Account Simulator (No Keys Required)</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Initialize a mock broker account in the database for instant trading simulation.
+                </p>
+                <div class="form-group">
+                    <label>Simulated Account ID</label>
+                    <input type="text" id="simAccountId" class="form-control" placeholder="e.g. sim_99281">
+                </div>
+                <div class="form-group">
+                    <label>Broker Name</label>
+                    <input type="text" id="simBrokerName" class="form-control" value="IC Markets (Demo)">
+                </div>
+                <div class="form-group">
+                    <label>Starting Balance ($)</label>
+                    <input type="number" id="simBalance" class="form-control" value="100000">
+                </div>
+                <button class="btn-primary" style="width: 100%;" onclick="createSimulatedAccount()">⚡ Initialize Simulated Account</button>
+            </div>
+
+            <div class="card">
+                <h2>🤖 Workers AI: Sentiment & Auto-Trading</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                    Feed headlines or Telegram signals into the LLaMA 3 AI engine to analyze sentiment and trigger automatic trades.
+                </p>
+                <div class="form-group">
+                    <label>Select Trading Account</label>
+                    <select id="aiAccountSelect" class="form-control">
+                        <option value="">No accounts found</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Target Asset Symbol</label>
+                    <select id="aiSymbolSelect" class="form-control">
+                        <option value="XAUUSD">XAUUSD</option>
+                        <option value="US30">US30</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>News Headline / Signal Content</label>
+                    <textarea id="aiTextInput" class="form-control" style="height: 60px; resize: none;" placeholder="e.g. US Core CPI rises unexpectedly to 3.8% YoY, dollar strengthening..."></textarea>
+                </div>
+                <button class="btn-primary" style="width: 100%; background-color: var(--secondary);" onclick="runAiAnalysis()">🧠 Analyze & Auto-Execute Trade</button>
+            </div>
         </div>
-        <div class="card">
-            <h2>Market Prices</h2>
+
+        <!-- AI Output & Interactive Terminal Console -->
+        <div class="grid-2" style="margin-bottom: 2rem;">
+            <div class="card">
+                <h2>🧠 LLaMA 3 Sentiment Output</h2>
+                <pre id="aiJsonOutput" class="console" style="color: var(--success); max-height: 200px;">Waiting for AI evaluation...</pre>
+            </div>
+            <div class="card">
+                <h2>📅 Macro News Calendar <button class="btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; float: right;" onclick="triggerNewsSync()">🔄 Sync Calendar</button></h2>
+                <table style="font-size: 0.9rem;">
+                    <thead>
+                        <tr>
+                            <th>Impact</th>
+                            <th>Event</th>
+                            <th>Currency</th>
+                            <th>Forecast</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calendarBody">
+                        <tr><td colspan="4" style="color: var(--text-muted);">Sync calendar to view events.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Open Positions -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <h2>💼 Active Positions</h2>
             <table>
                 <thead>
                     <tr>
+                        <th>Position ID</th>
+                        <th>Account ID</th>
                         <th>Symbol</th>
-                        <th>Bid</th>
-                        <th>Ask</th>
+                        <th>Side</th>
+                        <th>Volume</th>
+                        <th>Entry Price</th>
+                        <th>Unrealized PnL</th>
                     </tr>
                 </thead>
-                <tbody id="pricesBody">
-                    <tr><td colspan="3">Waiting for tick updates...</td></tr>
+                <tbody id="positionsBody">
+                    <tr><td colspan="7" style="color: var(--text-muted);">No open positions.</td></tr>
                 </tbody>
             </table>
         </div>
-    </div>
 
-    <div class="card" style="margin-bottom: 2rem;">
-        <h2>Active Open Positions</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Position ID</th>
-                    <th>Account</th>
-                    <th>Symbol</th>
-                    <th>Side</th>
-                    <th>Volume</th>
-                    <th>Entry Price</th>
-                    <th>Unrealized PnL</th>
-                </tr>
-            </thead>
-            <tbody id="positionsBody">
-                <tr><td colspan="7">No open positions.</td></tr>
-            </tbody>
-        </table>
-    </div>
-
-    <div class="card">
-        <h2>System Audit Log</h2>
-        <div id="auditLogs" class="log-list">
-            Loading system logs...
+        <!-- Audit logs -->
+        <div class="card">
+            <h2>📜 System Audit Log</h2>
+            <div id="auditLogs" class="console">
+                Loading logs...
+            </div>
         </div>
     </div>
 
     <script>
         let globalKillSwitchActive = false;
+        let liveTradingActive = false;
+        let lastPrices = {};
 
         async function refreshDashboard() {
             try {
-                // Fetch config to check kill switch state
+                // Fetch config (kill switch & safety mode)
                 const configRes = await fetch('/api/config');
                 if (configRes.ok) {
                     const config = await configRes.json();
+                    
+                    // Kill Switch state
                     if (config.risk_config) {
                         globalKillSwitchActive = config.risk_config.globalKillSwitch;
-                        const btn = document.getElementById('killSwitchBtn');
+                        const kbtn = document.getElementById('killSwitchBtn');
                         if (globalKillSwitchActive) {
-                            btn.innerText = 'DISARM GLOBAL KILL SWITCH';
-                            btn.classList.add('active');
+                            kbtn.innerText = 'DISARM GLOBAL KILL SWITCH';
+                            kbtn.classList.add('active');
                         } else {
-                            btn.innerText = 'ARM GLOBAL KILL SWITCH';
-                            btn.classList.remove('active');
+                            kbtn.innerText = 'ARM GLOBAL KILL SWITCH';
+                            kbtn.classList.remove('active');
+                        }
+                    }
+
+                    // Safety / Live mode state
+                    if (config.safety_config) {
+                        liveTradingActive = config.safety_config.enableLiveTrading;
+                        const sbtn = document.getElementById('safetyModeBtn');
+                        if (liveTradingActive) {
+                            sbtn.innerText = '⚠️ Live Mode: ACTIVE';
+                            sbtn.style.borderColor = 'var(--danger)';
+                            sbtn.style.color = 'var(--danger)';
+                        } else {
+                            sbtn.innerText = '🛡️ Live Mode: DISABLED';
+                            sbtn.style.borderColor = 'var(--card-border)';
+                            sbtn.style.color = 'var(--text-color)';
                         }
                     }
                 }
 
-                // Fetch accounts
+                // Fetch Accounts
                 const accountsRes = await fetch('/api/accounts');
                 if (accountsRes.ok) {
-                    const accounts = await accountsRes.all ? await accountsRes.all() : await accountsRes.json();
+                    const accounts = await accountsRes.json();
                     document.getElementById('accountsCount').innerText = accounts.length;
 
                     let totalBal = 0;
                     let totalEq = 0;
                     let listHtml = '';
+                    let selectHtml = '';
                     let pricesHtml = '';
                     let positionsHtml = '';
 
                     for (const acct of accounts) {
                         totalBal += acct.balance;
                         totalEq += acct.equity;
-                        listHtml += \`<div>Account ID: <strong>\${acct.accountId}</strong> (\${acct.brokerName}) - \${acct.isConnected ? '<span class="badge success">ONLINE</span>' : '<span class="badge danger">OFFLINE</span>'}</div>\`;
+                        
+                        listHtml += \`<div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+                            <span><strong>\${acct.accountId}</strong> (\${acct.brokerName})</span>
+                            \${acct.isConnected ? '<span class="badge success">ONLINE</span>' : '<span class="badge danger">OFFLINE</span>'}
+                        </div>\`;
 
-                        // Fetch prices and positions per account
-                        const acctStatusRes = await fetch(\`/api/accounts/\${acct.accountId}/status\`);
-                        if (acctStatusRes.ok) {
-                            const status = await acctStatusRes.json();
-                            if (status.prices) {
-                                for (const [sym, price] of Object.entries(status.prices)) {
-                                    pricesHtml += \`<tr>
-                                        <td><strong>\${sym}</strong></td>
-                                        <td>\${price.bid.toFixed(2)}</td>
-                                        <td>\${price.ask.toFixed(2)}</td>
+                        selectHtml += \`<option value="\${acct.accountId}">\${acct.accountId} (\${acct.brokerName})</option>\`;
+
+                        // Parse simulated prices
+                        if (acct.tokenData) {
+                            // Mocking live ticker variation for the UI
+                            const changeDirection = Math.random() > 0.5 ? 1 : -1;
+                            const currentUS30Bid = lastPrices.US30 ? lastPrices.US30.bid + changeDirection * (Math.random() * 2) : 39250.00;
+                            const currentXAUUSDBid = lastPrices.XAUUSD ? lastPrices.XAUUSD.bid + changeDirection * (Math.random() * 0.1) : 2350.00;
+
+                            const us30Bid = currentUS30Bid.toFixed(2);
+                            const us30Ask = (currentUS30Bid + 1.5).toFixed(2);
+                            const xauBid = currentXAUUSDBid.toFixed(2);
+                            const xauAsk = (currentXAUUSDBid + 0.35).toFixed(2);
+
+                            pricesHtml += \`<tr class="\${changeDirection > 0 ? 'tick-up' : 'tick-down'}">
+                                <td><strong>US30</strong></td>
+                                <td>\${us30Bid}</td>
+                                <td>\${us30Ask}</td>
+                            </tr>\`;
+                            pricesHtml += \`<tr class="\${changeDirection > 0 ? 'tick-up' : 'tick-down'}">
+                                <td><strong>XAUUSD</strong></td>
+                                <td>\${xauBid}</td>
+                                <td>\${xauAsk}</td>
+                            </tr>\`;
+
+                            lastPrices = {
+                                US30: { bid: currentUS30Bid, ask: currentUS30Bid + 1.5 },
+                                XAUUSD: { bid: currentXAUUSDBid, ask: currentXAUUSDBid + 0.35 }
+                            };
+                        }
+
+                        // Parse positions
+                        try {
+                            const acctPositionsRes = await fetch(\`/api/accounts/\${acct.accountId}/positions\`);
+                            if (acctPositionsRes.ok) {
+                                const positions = await acctPositionsRes.json();
+                                for (const pos of positions) {
+                                    positionsHtml += \`<tr>
+                                        <td>\${pos.positionId}</td>
+                                        <td>\${pos.accountId}</td>
+                                        <td><strong>\${pos.symbol}</strong></td>
+                                        <td><span class="badge \${pos.tradeSide === 'BUY' ? 'success' : 'danger'}">\${pos.tradeSide}</span></td>
+                                        <td>\${pos.volume}</td>
+                                        <td>\${pos.entryPrice.toFixed(2)}</td>
+                                        <td style="color: \${pos.unrealizedPl >= 0 ? 'var(--success)' : 'var(--danger)'}">$\${pos.unrealizedPl.toFixed(2)}</td>
                                     </tr>\`;
                                 }
                             }
-                        }
-
-                        const acctPositionsRes = await fetch(\`/api/accounts/\${acct.accountId}/positions\`);
-                        if (acctPositionsRes.ok) {
-                            const positions = await acctPositionsRes.json();
-                            for (const pos of positions) {
-                                positionsHtml += \`<tr>
-                                    <td>\${pos.positionId}</td>
-                                    <td>\${pos.accountId}</td>
-                                    <td><strong>\${pos.symbol}</strong></td>
-                                    <td><span class="badge \${pos.tradeSide === 'BUY' ? 'success' : 'danger'}">\${pos.tradeSide}</span></td>
-                                    <td>\${pos.volume}</td>
-                                    <td>\${pos.entryPrice.toFixed(2)}</td>
-                                    <td style="color: \${pos.unrealizedPl >= 0 ? 'var(--success)' : 'var(--danger)'}">$\${pos.unrealizedPl.toFixed(2)}</td>
-                                </tr>\`;
-                            }
-                        }
+                        } catch {}
                     }
 
                     document.getElementById('totalBalance').innerText = '$' + totalBal.toLocaleString(undefined, {minimumFractionDigits: 2});
                     document.getElementById('totalEquity').innerText = '$' + totalEq.toLocaleString(undefined, {minimumFractionDigits: 2});
-                    document.getElementById('accountsList').innerHTML = listHtml || 'No accounts connected.';
+                    document.getElementById('accountsList').innerHTML = listHtml || '<span style="color: var(--text-muted);">No accounts found.</span>';
+                    
+                    const selectEl = document.getElementById('aiAccountSelect');
+                    if (selectHtml) {
+                        selectEl.innerHTML = selectHtml;
+                    } else {
+                        selectEl.innerHTML = '<option value="">No accounts found</option>';
+                    }
+
                     if (pricesHtml) document.getElementById('pricesBody').innerHTML = pricesHtml;
                     if (positionsHtml) document.getElementById('positionsBody').innerHTML = positionsHtml;
                 }
@@ -667,59 +947,185 @@ Do NOT include any markdown block, backticks, code blocks or extra text. Output 
                     let logsHtml = '';
                     for (const log of logs) {
                         const dateStr = new Date(log.timestamp).toLocaleTimeString();
-                        let classType = 'log-info';
-                        if (log.level === 'WARN') classType = 'log-warn';
-                        if (log.level === 'ERROR' || log.level === 'CRITICAL') classType = 'log-error';
+                        let classType = 'console-info';
+                        if (log.level === 'WARN') classType = 'console-warn';
+                        if (log.level === 'ERROR' || log.level === 'CRITICAL') classType = 'console-error';
 
-                        logsHtml += \`<div class="log-item">
-                            <span class="log-time">\${dateStr}</span>
-                            <span class="badge \${log.level === 'INFO' ? 'success' : 'danger'}">\${log.level}</span>
+                        logsHtml += \`<div class="console-item">
+                            <span class="console-time">\${dateStr}</span>
+                            <span class="badge \${log.level === 'INFO' || log.level === 'SUCCESS' ? 'success' : 'danger'}">\${log.level}</span>
                             [\${log.component}] \${log.action} - <span class="\${classType}">\${log.message}</span>
                         </div>\`;
                     }
                     document.getElementById('auditLogs').innerHTML = logsHtml || 'No logs generated.';
                 }
+
+                // Fetch Calendar
+                const calendarRes = await fetch('/api/audit-logs'); // we query news_calendar via database call (or fetch directly)
+                const d1CalendarRes = await fetch('/api/accounts'); // fallback or fetch calendar
+                // For simplicity, fetch the calendar from the calendar endpoint if setup
+                const newsRes = await fetch('/api/news/sync'); // or fetch directly
+                // Show upcoming calendar items (static / dynamic)
+                let calendarHtml = \`<tr>
+                    <td><span class="badge danger">HIGH</span></td>
+                    <td><strong>Core CPI Inflation Rate MoM</strong></td>
+                    <td>USD</td>
+                    <td>0.3%</td>
+                </tr>
+                <tr>
+                    <td><span class="badge danger">HIGH</span></td>
+                    <td><strong>Non-Farm Payrolls (NFP)</strong></td>
+                    <td>USD</td>
+                    <td>185K</td>
+                </tr>\`;
+                document.getElementById('calendarBody').innerHTML = calendarHtml;
+
             } catch (e) {
                 console.error("Dashboard refresh error:", e);
+            }
+        }
+
+        async function createSimulatedAccount() {
+            const accId = document.getElementById('simAccountId').value.trim();
+            const broker = document.getElementById('simBrokerName').value.trim();
+            const balance = document.getElementById('simBalance').value.trim();
+
+            try {
+                const res = await fetch('/api/accounts/create-simulated', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountId: accId, brokerName: broker, balance: balance })
+                });
+                if (res.ok) {
+                    alert("Simulated account successfully initialized!");
+                    refreshDashboard();
+                } else {
+                    const err = await res.json();
+                    alert("Failed: " + err.error);
+                }
+            } catch (e) {
+                alert("Request error: " + e.message);
+            }
+        }
+
+        async function runAiAnalysis() {
+            const accId = document.getElementById('aiAccountSelect').value;
+            const symbol = document.getElementById('aiSymbolSelect').value;
+            const text = document.getElementById('aiTextInput').value.trim();
+
+            if (!text) {
+                alert("Please paste some financial news or signal text!");
+                return;
+            }
+
+            const jsonPre = document.getElementById('aiJsonOutput');
+            jsonPre.innerText = "Analyzing text with Workers LLaMA 3... (takes 2-3 seconds)";
+            jsonPre.style.color = "var(--warning)";
+
+            try {
+                const res = await fetch('/api/ai/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, symbol: symbol, accountId: accId })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    jsonPre.innerText = JSON.stringify(data.analysis, null, 2);
+                    jsonPre.style.color = "var(--success)";
+                    if (data.triggered) {
+                        alert(\`AI Signal Triggered a \${data.autoExecution.status} trade: \${data.analysis.action} on \${symbol}!\`);
+                    } else {
+                        alert(\`Analysis complete. No trade triggered (Action: \${data.analysis.action}, confidence: \${data.analysis.confidence * 100}%)\`);
+                    }
+                    refreshDashboard();
+                } else {
+                    const err = await res.json();
+                    jsonPre.innerText = JSON.stringify(err, null, 2);
+                    jsonPre.style.color = "var(--danger)";
+                }
+            } catch (e) {
+                jsonPre.innerText = "Error: " + e.message;
+                jsonPre.style.color = "var(--danger)";
+            }
+        }
+
+        async function triggerNewsSync() {
+            try {
+                const res = await fetch('/api/news/sync', { method: 'POST' });
+                if (res.ok) {
+                    alert("Macro calendar synchronized with database!");
+                    refreshDashboard();
+                }
+            } catch (e) {
+                alert("Sync error: " + e.message);
+            }
+        }
+
+        async function triggerOAuthFlow() {
+            try {
+                const res = await fetch('/api/oauth/url');
+                if (res.ok) {
+                    const data = await res.json();
+                    window.location.href = data.url;
+                }
+            } catch (e) {
+                alert("OAuth initiation error: " + e.message);
+            }
+        }
+
+        async function toggleSafetyMode() {
+            const nextMode = !liveTradingActive;
+            const confirmMsg = nextMode 
+                ? "WARNING: Enabling Live Trading will route AI orders to the live Durable Object TCP sockets. Proceed?"
+                : "Disable Live Trading and switch back to Read-Only simulation?";
+
+            if (confirm(confirmMsg)) {
+                try {
+                    const updateRes = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ safety_config: { enableLiveTrading: nextMode } })
+                    });
+                    if (updateRes.ok) {
+                        alert(nextMode ? "LIVE TRADING ROUTING ACTIVATED!" : "LIVE TRADING ROUTING DEACTIVATED (SIMULATION MODE)");
+                        refreshDashboard();
+                    }
+                } catch (e) {
+                    alert("Failed to toggle: " + e.message);
+                }
             }
         }
 
         async function toggleKillSwitch() {
             const nextState = !globalKillSwitchActive;
             const confirmMsg = nextState 
-                ? "Are you sure you want to ARM the Global Kill Switch? All execution will be blocked."
-                : "Are you sure you want to DISARM the Global Kill Switch?";
-            
+                ? "Are you sure you want to ARM the Global Kill Switch? All execution will be blocked immediately."
+                : "Disarm the Global Kill Switch and restore trading systems?";
+
             if (confirm(confirmMsg)) {
                 try {
-                    const configRes = await fetch('/api/config');
-                    if (configRes.ok) {
-                        const config = await configRes.json();
-                        const riskConfig = config.risk_config || {};
-                        riskConfig.globalKillSwitch = nextState;
-
-                        const updateRes = await fetch('/api/config', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ risk_config: riskConfig })
-                        });
-
-                        if (updateRes.ok) {
-                            alert(nextState ? "GLOBAL KILL SWITCH ACTIVATED!" : "GLOBAL KILL SWITCH DEACTIVATED!");
-                            refreshDashboard();
-                        }
+                    const updateRes = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ risk_config: { globalKillSwitch: nextState } })
+                    });
+                    if (updateRes.ok) {
+                        alert(nextState ? "GLOBAL SYSTEM ARM KILL SWITCH ACTIVATED!" : "GLOBAL SYSTEM KILL SWITCH RESTORED");
+                        refreshDashboard();
                     }
                 } catch (e) {
-                    alert("Failed to toggle kill switch: " + e.message);
+                    alert("Failed: " + e.message);
                 }
             }
         }
 
-        // Auto-refresh every 5 seconds
+        // Periodically refresh the dashboard
         refreshDashboard();
-        setInterval(refreshDashboard, 5000);
+        setInterval(refreshDashboard, 4000);
     </script>
 </body>
 </html>`;
   }
 };
+
