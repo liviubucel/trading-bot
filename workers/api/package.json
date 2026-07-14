@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@zebrabyte/contracts": "file:../../packages/contracts",
+    "@zebrabyte/ctrader-account-do": "file:../../durable-objects/ctrader-account",
     "@zebrabyte/market-models": "file:../../packages/market-models"
   },
   "devDependencies": {

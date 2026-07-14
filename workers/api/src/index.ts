@@ -1,5 +1,8 @@
 import { TokenData, TradingCommand } from "@zebrabyte/contracts";
 
+// Re-export Durable Object classes so Wrangler can discover them from the entrypoint
+export { CTraderAccount } from "@zebrabyte/ctrader-account-do";
+
 export interface Env {
   DB: D1Database;
   CTRADER_ACCOUNT_DO: DurableObjectNamespace;
